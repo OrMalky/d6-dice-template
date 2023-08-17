@@ -10,7 +10,7 @@ public class Dice : SerializableDictionary<Die, int> { }
 
 public class DiceRoller : MonoBehaviour
 {
-    public Dice dice;
+    [SerializeField] private Dice dice;
 
     // Properties
     public int Sum => Values.Sum();
@@ -34,7 +34,7 @@ public class DiceRoller : MonoBehaviour
     /// <param name="callbacks"> A collection of actions to be called with the results. </param>
     /// <param name="torques"> An array of torques to be applied to each die (null for random). </param> 
     /// <param name="forces"> An array of forces to be applied to each die (null for random). </param> 
-    public void RollAll(ICollection<Action<int[]>> callbacks = null, Vector3?[] torques = null, Vector3?[] forces = null)
+    public void RollAll(ICollection<Action<int[]>> callbacks, Vector3?[] torques = null, Vector3?[] forces = null)
     {
         if (IsRolling)
         {
@@ -44,7 +44,7 @@ public class DiceRoller : MonoBehaviour
 
         for (int i = 0; i < dice.Count; i++)
         {
-            RollOne(new List<Action<int>>(), i, torques?[i], forces?[i]);
+            RollOne((Action<int>)null, i, torques?[i], forces?[i]);
         }
         StartCoroutine(HandleRoll(callbacks));
     }
@@ -68,7 +68,7 @@ public class DiceRoller : MonoBehaviour
     /// <param name="index"> Index of the die to be rolled (0 by default) </param>
     /// <param name="torque"> Torque to be applied to the die (null for random) </param>
     /// <param name="force"> Force to be applied to the die (null for random) </param>
-    public void RollOne(ICollection<Action<int>> callbacks = null, int index = 0, Vector3? torque = null, Vector3? force = null)
+    public void RollOne(ICollection<Action<int>> callbacks, int index = 0, Vector3? torque = null, Vector3? force = null)
     {
         if (index < 0 || index >= dice.Count)
         {
@@ -104,12 +104,18 @@ public class DiceRoller : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets the die at the specified index.
+    /// Get the die at the specified index.
     /// </summary>
     /// <param name="index"> The index of the die. </param>
     /// <returns> The <see cref="Die"/> of the relevant die. </returns>
     public Die GetDie(int index = 0)
     {
+        if (index < 0 || index >= dice.Count)
+        {
+            Debug.LogError("Index out of range");
+            return null;
+        }
+
         return dice.Keys.ElementAt(index);
     }
 
@@ -131,24 +137,7 @@ public class DiceRoller : MonoBehaviour
             die.Value = targetValues[i];
             dice[die] = targetValues[i];
         }
-    }
-
-    /// <summary>
-    /// Sets the value of a single die.
-    /// </summary>
-    /// <param name="die"> The <see cref="Die"/> to be set. </param>
-    /// <param name="value"> The value to set the die to. </param>
-    public void SetDieValue(Die die, int value)
-    {
-        if (die == null)
-        {
-            Debug.LogError("Die is null");
-            return;
-        }
-
-        die.Value = value;
-        dice[die] = value;
-    }
+    } 
 
     /// <summary>
     /// Sets the value of a single die.
@@ -163,41 +152,28 @@ public class DiceRoller : MonoBehaviour
             return;
         }
 
-        SetDieValue(dice.Keys.ElementAt(index), value);
+        Die die = GetDie(index);
+        if (die == null)
+        {
+            Debug.LogError("Die is null");
+            return;
+        }
+
+        die.Value = value;
+        dice[die] = value;
     }
 
     /// <summary>
     /// Adds a die to the dice collection.
     /// </summary>
     /// <param name="die"> The die to add. </param>
-    public void AddDie(Die die)
-    {
-        dice.Add(die, die.Value);
-    }
-
-    /// <summary>
-    /// Removes a die from the dice collection.
-    /// </summary>
-    /// <param name="die"> The die to remove. </param>
-    public void RemoveDie(Die die)
-    {
-        if (dice.ContainsKey(die))
-        {
-            dice.Remove(die);
-        }
-    }
+    public void AddDie(Die die) => dice.Add(die, die.Value);
 
     /// <summary>
     /// Removes a die from the dice collection.
     /// </summary>
     /// <param name="index"> The index of the die to remove. </param>
-    public void RemoveDie(int index)
-    {
-        if (index >= 0 && index < dice.Count)
-        {
-            RemoveDie(GetDie(index));
-        }
-    }
+    public void RemoveDie(int index) => dice.Remove(GetDie(index));
 
 
     /// <summary>

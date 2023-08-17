@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using UnityEngine;
 
 [System.Serializable]
@@ -25,18 +24,27 @@ public class Die : MonoBehaviour
     [CustomAttributes.ReadOnly][SerializeField] private int value;
     [CustomAttributes.ReadOnly][SerializeField] private bool isRolling = false;
 
-    [Header("Values")]
-    [SerializeField] private SideValueDictionary values;
+    [SerializeField]
+    private SideValueDictionary values = new() //Maps bwteen side and value. This can be static and readonly if all your dice have the same values.
+    {
+        { Side.Forward, 1 },
+        { Side.Up, 2 },
+        { Side.Left, 3 },
+        { Side.Right, 4 },
+        { Side.Down, 5 },
+        { Side.Back, 6 }
+    };
 
-    [Header("Settings")]
-    [SerializeField] private float stopThreshold = 0.001f;  // Maximum difference between current and last position and rotation to be considered as a stop
+    // Constants
+    private const float stopThreshold = 0.001f;  // Maximum difference between current and last position and rotation to be considered as a stop
 
+    // Members
     private Vector3 lastPosition;
     private Quaternion lastRotation;
     private Coroutine rollInstance;
-
     private Rigidbody rb;
-    private static readonly Dictionary<Side, Quaternion> sideToRotation = new()
+
+    private static readonly Dictionary<Side, Quaternion> sideToRotation = new() // Used to convert a side to a rotation
     {
         { Side.Forward, Quaternion.LookRotation(Vector3.up, Vector3.forward) },
         { Side.Up, Quaternion.LookRotation(Vector3.forward, Vector3.up) },
@@ -110,40 +118,44 @@ public class Die : MonoBehaviour
     /// <param name="callbacks"> A collection of actions to be called with the result. </param>
     public void Roll(Vector3 torque, Vector3 force, ICollection<System.Action<int>> callbacks)
     {
+        // Physically roll the die
         rb.AddForce(force, ForceMode.Impulse);
         rb.AddTorque(torque, ForceMode.Impulse);
+
         if (rollInstance == null)
         {
             isRolling = true;
-            rollInstance = StartCoroutine(HandleRoll(callbacks));
+            rollInstance = StartCoroutine(HandleRoll(callbacks));   // Start coroutine to handle the result
         }
     }
 
     /// <summary>
     /// Calculates the value of the die based on its rotation.
     /// </summary>
-    /// <returns> <see cref="int"/> value of the die.</returns>
+    /// <returns> <see cref="int"/> The value of the die.</returns>
     private int CalculateValue()
     {
-        Dictionary<Vector3, int> sides = new()
+        // Map world space vector to side on the die
+        Dictionary<Vector3, Side> sides = new()
         {
-            { transform.forward, values[Side.Forward] },
-            { transform.up, values[Side.Up] },
-            { -transform.right, values[Side.Left] },
-            { transform.right, values[Side.Right] },
-            { -transform.up, values[Side.Down] },
-            { -transform.forward, values[Side.Back] }
+            { transform.forward, Side.Forward },
+            { transform.up, Side.Up },
+            { -transform.right, Side.Left },
+            { transform.right, Side.Right },
+            { -transform.up, Side.Down },
+            { -transform.forward, Side.Back }
         };
 
+        // Find the side with the highest dot product with Vector3.up
         int value = 0;
         float max = -1f;
-        foreach (Vector3 side in sides.Keys)
+        foreach (var side in sides)
         {
-            float dot = Vector3.Dot(side, Vector3.up);
+            float dot = Vector3.Dot(side.Key, Vector3.up);
             if (dot > max)
             {
                 max = dot;
-                value = sides[side];
+                value = values[side.Value];
             }
         }
         return value;
