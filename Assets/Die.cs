@@ -35,9 +35,6 @@ public class Die : MonoBehaviour
         { Side.Back, 6 }
     };
 
-    // Constants
-    private const float stopThreshold = 0.001f;  // Maximum difference between current and last position and rotation to be considered as a stop
-
     // Members
     private Vector3 lastPosition;
     private Quaternion lastRotation;
@@ -64,13 +61,6 @@ public class Die : MonoBehaviour
         value = CalculateValue();
     }
 
-    /// <summary>
-    /// Checks if the die is rolling.
-    /// </summary>
-    /// <returns> <see cref="True"/> if the die is rolling, <see cref="False"/> otherwise.</returns>
-    private bool CheckStopped() => Vector3.Distance(transform.position, lastPosition) <= stopThreshold
-        && Quaternion.Dot(transform.rotation, lastRotation) >= 1f;
-
 
     /// <summary>
     /// Enumerator that awaits for the die to stop rolling, and handles the result.
@@ -81,7 +71,7 @@ public class Die : MonoBehaviour
         while (isRolling)
         {
             yield return new WaitForFixedUpdate();
-            if (CheckStopped())
+            if (rb.IsSleeping())
             {
                 isRolling = false;
                 value = CalculateValue();
