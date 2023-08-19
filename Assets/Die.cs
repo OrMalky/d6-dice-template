@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using UnityEngine;
 
 [System.Serializable]
@@ -36,8 +37,7 @@ public class Die : MonoBehaviour
     };
 
     // Members
-    private Vector3 lastPosition;
-    private Quaternion lastRotation;
+    private TaskCompletionSource<bool> rollTask;
     private Coroutine rollInstance;
     private Rigidbody rb;
 
@@ -55,10 +55,36 @@ public class Die : MonoBehaviour
     public int Value { get => value; set => SetValue(value); }
     public bool IsRolling => isRolling;
 
-    public void Start()
+    private void Start()
     {
         rb = GetComponent<Rigidbody>();
         value = CalculateValue();
+    }
+
+    private void FixedUpdate()
+    {
+        if (IsRolling && rb.IsSleeping())
+        {
+            isRolling = false;
+            rollTask?.SetResult(true);
+        }
+    }
+
+    public async Task<int> Roll(Vector3 torque, Vector3 force)
+    {
+        // Physically roll the die
+        rb.AddForce(force, ForceMode.Impulse);
+        rb.AddTorque(torque, ForceMode.Impulse);
+
+        if (!IsRolling)
+        {
+            rollTask = new TaskCompletionSource<bool>();
+            isRolling = true;
+            await rollTask.Task;
+            value = CalculateValue();
+            return value;
+        }
+        return -1;
     }
 
 
@@ -79,11 +105,6 @@ public class Die : MonoBehaviour
                 {
                     callback?.Invoke(value);
                 }
-            }
-            else
-            {
-                lastPosition = transform.position;
-                lastRotation = transform.rotation;
             }
         }
         rollInstance = null;

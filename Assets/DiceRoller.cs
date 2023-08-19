@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -25,6 +26,28 @@ public class DiceRoller : MonoBehaviour
     private void Start()
     {
         ReadValues();
+    }
+
+    public async Task<int[]> RollAll(Vector3?[] torques = null, Vector3?[] forces = null)
+    {
+        Task[] tasks = new Task[dice.Count];
+        for (int i = 0; i < dice.Count; i++)
+        {
+            tasks[i] = RollOne(i, torques?[i], forces?[i]);
+        }
+
+        await Task.WhenAll(tasks);
+        return Values;
+    }
+
+    public async Task<int> RollOne(int index = 0, Vector3? torque = null, Vector3? force = null)
+    {
+        Die die = dice.Keys.ElementAt(index);
+        torque ??= Random.insideUnitSphere * maxRollTorque;
+        force ??= Random.Range(minRollForce, maxRollForce) * Vector3.up;
+        int result = await die.Roll((Vector3)torque, (Vector3)force);
+        dice[die] = result;
+        return result;
     }
 
     /// <summary>
@@ -56,7 +79,7 @@ public class DiceRoller : MonoBehaviour
     /// <param name="callback"> An action to be called with the results. </param>
     /// <param name="torques"> An array of torques to be applied to each die (null for random). </param> 
     /// <param name="forces"> An array of forces to be applied to each die (null for random). </param> 
-    public void RollAll(Action<int[]> callback = null, Vector3?[] torques = null, Vector3?[] forces = null)
+    public void RollAll(Action<int[]> callback, Vector3?[] torques = null, Vector3?[] forces = null)
     {
         RollAll((List<Action<int[]>>)(callback == null ? new() : new() { callback }), torques, forces);
     }
@@ -98,7 +121,7 @@ public class DiceRoller : MonoBehaviour
     /// <param name="index"> Index of the die to be rolled (0 by default) </param>
     /// <param name="torque"> Torque to be applied to the die (null for random) </param>
     /// <param name="force"> Force to be applied to the die (null for random) </param>
-    public void RollOne(Action<int> callback = null, int index = 0, Vector3? torque = null, Vector3? force = null)
+    public void RollOne(Action<int> callback, int index = 0, Vector3? torque = null, Vector3? force = null)
     {
         RollOne((List<Action<int>>)(callback == null ? new() : new() { callback }), index, torque, force);
     }

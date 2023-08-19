@@ -12,25 +12,34 @@ public class Tester : MonoBehaviour
     [SerializeField] private float minRollForce = 5f;
     [SerializeField] private float maxRollForce = 10f;
 
-    private void Test(int value)
+    private async void TestAsyncDie()
     {
-        Debug.Log(value);
+        int result = await die.Roll(Random.insideUnitSphere * maxRollTorque, Random.Range(minRollForce, maxRollForce) * Vector3.up);
+        Debug.Log($"Die rolled {result}");
     }
 
-    private void Test(int[] values)
+    private async void TestAsyncRollOne()
     {
-        Debug.Log(string.Join(", ", values));
+        int result = await roller.RollOne(1);
+        Debug.Log(result);
+    }
+
+    private async void TestAsyncRollAll()
+    {
+        int[] results = await roller.RollAll();
+        Debug.Log(string.Join(", ", results));
     }
 
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            roller.RollAll(Test);
+            TestAsyncRollAll();
         }
         if (Input.GetKeyDown(KeyCode.Return))
         {
-            roller.RollOne(Test);
+            TestAsyncDie();
+            TestAsyncRollOne();
         }
         if (Input.GetKeyDown(KeyCode.Keypad1))
         {
