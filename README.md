@@ -6,8 +6,8 @@ You can use this template as a starting point to create your own dice-related ga
 I set to make this little project since I came across some challanges of simulating a die:
 
 ### Finding The Die's Value
-Finding the value of a die is not simple. The most common solution is to use 6 different colliders, one for each side of the die. This is obviously inefficient and inelegant. Instead, I use linear algebra.
-Using Unity's built-in `transform.up`, `transform.forward` and `transform.right` we can get the vectors that represent the cube's side's normals in world space.
+Finding the value of a die is not simple. The most common solution is to use 6 different colliders, one for each side of the die. This is obviously inefficient and inelegant. Instead, I use linear algebra.  
+Using Unity's built-in `transform.up`, `transform.forward` and `transform.right` we can get the vectors that represent the cube's axes in world space. Since two of theese three vectors should be relativly perpendicular to `Vector3.up`, and the third should be relativly parallel to it, we can search for the parallel one by calculating each vector's dot product with `Vector3.up`. By comparing the dot products we can find the one closet to either 1 or -1 (while the others will give values closer to 0), this one is the parallel one. After finding the correct axe, we just need to know if the side pointing up is the one facing the positive side of this vector on the negative, which we can find simply by checking if our dot product was positiove or negative.
 <details>
 
 <summary>
@@ -15,55 +15,33 @@ Using Unity's built-in `transform.up`, `transform.forward` and `transform.right`
 </summary>
   
   ```C#
-  // Map world space vector to side on the die
-Dictionary<Vector3, Side> sides = new()
+private int CalculateValue()
 {
-    { transform.forward, Side.Forward },
-    { transform.up, Side.Up },
-    { -transform.right, Side.Left },
-    { transform.right, Side.Right },
-    { -transform.up, Side.Down },
-    { -transform.forward, Side.Back }
-};
-  ```
+    Vector3[] vectors = new Vector3[3] { transform.forward, transform.up, transform.right };
+    float max = -1f;
+    Side side = Side.Forward;
 
-</details>
-
-Then we can calculate the dot product between each of these vectors and the `Vector3.up` (which is just `(0, 1, 0)`), to find the one with the smallest angle. This vector is the one pointing up, and since each of the vectors corospond to one side, this side is the one pointing up as well.
-<details>
-
-<summary>
-  Code
-</summary>
-  
-  ```C#
-// Find the side with the highest dot product with Vector3.up
-int value = 0;
-float max = -1f;
-foreach (var side in sides)
-{
-    float dot = Vector3.Dot(side.Key, Vector3.up);
-    if (dot > max)
+    for (int i = 0; i < vectors.Length; i++)
     {
-        max = dot;
-        value = values[side.Value];
+        float dot = Vector3.Dot(vectors[i], Vector3.up);  // Calculate each vector dot product with Vector3.up
+        if (Mathf.Abs(dot) >= max)    // Find the one closet to 1 or -1
+        {
+            max = Mathf.Abs(dot);
+            side = dot < 0 ? (Side)(i + 3) : (Side)i;    // Save the correct side based of the positivty of the dot product
+        }
     }
+    return values[side];
 }
-return value;
   ```
 
 </details>
 
 ### Returning Results
 Since the die is physcally simulated, the results are not immidiate, rather, we only know the value of a die after its done rolling.  
-On the other hand, functions in C# are resolved immidiately. Therefore, we cannot just call a function and have an integer return value with the result:  
-```C#
-int result = die.Roll(); // This cannot work
-```
-
-To solve this we must opt for asynchronized programming, in this case the use of Unity's `IEnumerator`.  
-One solution is using an accessible variable to store the result, or make the user subscribe to an event, but these approaches are inelegant and are not intuitive to use for the user.  
-Instead, I decided to wrap the `IEnumerator` with a normal function, and pass a callback function directly.  
+On the other hand, functions in C# are usually resolved immidiately. Therefore, we cannot just use a normal function. To solve this we must opt for asynchronized programming.  
+The most common solutions are using an `IEnumarator` with an accessible variable, a callback function or have the user subscribe to an event. those are less elegant and pretty inefficient.  
+Instead, I used C# async functions. We define a new Task each time the die Roll is called, and use `await` to wait for it to finish.
+When the task is finished (i.e. the die has stopped rolling) we simply calculate the value and return it.
 <details>
 
 <summary>
@@ -71,61 +49,48 @@ Instead, I decided to wrap the `IEnumerator` with a normal function, and pass a 
 </summary>
   
   ```C#
-// Callable Roll function of the die
-public void Roll(Vector3 torque, Vector3 force, ICollection<System.Action<int>> callbacks)
+public async Task<int> Roll(Vector3 torque, Vector3 force)
 {
     // Physically roll the die
     rb.AddForce(force, ForceMode.Impulse);
     rb.AddTorque(torque, ForceMode.Impulse);
 
-    if (rollInstance == null)
+    if (!IsRolling)
     {
+        rollTask = new TaskCompletionSource<bool>();
         isRolling = true;
-        rollInstance = StartCoroutine(HandleRoll(callbacks));   // Start coroutine to handle the result
+        await rollTask.Task;
+        value = CalculateValue();
+        return value;
     }
-}
-
-// Enumerator to wait for result and call callbacks
-private IEnumerator HandleRoll(ICollection<System.Action<int>> callbacks)
-{
-   while (isRolling)
-   {
-       yield return new WaitForFixedUpdate();
-       if (CheckStopped())
-       {
-           isRolling = false;
-           value = CalculateValue();
-           foreach (System.Action<int> callback in callbacks ?? new List<System.Action<int>>())
-           {
-               callback?.Invoke(value);
-           }
-       }
-       else
-       {
-           lastPosition = transform.position;
-           lastRotation = transform.rotation;
-       }
-   }
-   rollInstance = null;
+    return 0;
 }
   ```
 
 </details>
 
-This gives us a much more elegent and intuitive way to work with the die:
-```C#
-public Die die;
+The task itself is very simple and is updated via `FixedUpdate`. All it does is to check if the die's rigidbody is sleeping and IsRolling falg is true, if so we know that there was a roll which is now done.
+<details>
 
-private void UseResult(int result)
+<summary>
+  Code
+</summary>
+  
+  ```C#
+private void FixedUpdate()
 {
-  //...
+    if (IsRolling && rb.IsSleeping())
+    {
+        isRolling = false;
+        rollTask?.SetResult(true);
+    }
 }
+  ```
 
-private void RollDie() => die.Roll(UseResult);
-```
+</details>
 
 
-Furthermore, for multiple dice, we have the [`Dice Roller`](Assets/DiceRoller.cs), which makes rolling multiple dice as easy as rolling one. Instead of having to use another `IEnumerator` to wait for all the dice to finish rolling, and managing a collection of dice, this is all done inside the Roller.  
+Furthermore, for multiple dice, we have the [`Dice Roller`](Assets/DiceRoller.cs), which makes rolling multiple dice as easy as rolling one. Instead of having to manage waiting for different roll tasks, or using an `IEnumerator` to wait for all the dice to finish rolling, this is all done for you inside the Roller.  
 <details>
 
 <summary>
@@ -134,46 +99,90 @@ Furthermore, for multiple dice, we have the [`Dice Roller`](Assets/DiceRoller.cs
   
   ```C#
 // Callable RollAll function to roll all dice
-public void RollAll(ICollection<Action<int[]>> callbacks, Vector3?[] torques = null, Vector3?[] forces = null)
+public async Task<int[]> RollAll(Vector3?[] torques = null, Vector3?[] forces = null)
 {
-    // Just rolls each die with no callback
+    Task[] tasks = new Task[dice.Count];
     for (int i = 0; i < dice.Count; i++)
     {
-        RollOne((Action<int>)null, i, torques?[i], forces?[i]);
-    }
-    StartCoroutine(HandleRoll(callbacks));
-}
-
-// Enumerator that waits for the dice to stop rolling, and then calls the callback functions
-private IEnumerator HandleRoll(ICollection<Action<int[]>> callbacks)
-{
-    while (IsRolling)
-    {
-        yield return new WaitForFixedUpdate();
+        tasks[i] = RollOne(i, torques?[i], forces?[i]);  // Create a new task of rolling for each die
     }
 
-    callbacks?.ToList().ForEach(callback => callback?.Invoke(Values));
+    await Task.WhenAll(tasks);    // Waiting for all tasks to finish (i.e. all dice to finish rolling)
+    return Values;
 }
   ```
 
 </details>
 
-This makes so it so rolling multiple dice is done the same as rolling a single die:
-```C#
-private void UseResults(int[] results)
-{
-  //...
-}
-
-private void RollDice() => dice.RollAll(UseResults);
-```
-
 ## Setup
 1. Make sure you have these in your Unity project:
    * azixMcAze's [SerializableDictionary](https://github.com/azixMcAze/Unity-SerializableDictionary) (can also be taken from [here](Assets/SerializableDictionary)).
    * [ReadOnlyPropertyDrawer](Assets/Editor/ReadOnlyPropertyDrawer) inside an Editor folder and [ReadOnlyAttribute](Assets/ReadOnlyAttributte.cs) anywhere.
+   * [Die.cs](Assets/Die.cs) and [DiceRoller.cs](DiceRoller.cs)
 2. Add a [Die](Assets/Die.cs) component to your die object. Make sure it also has a rigidbody and a box collider.
 3. To use a Dice Roller, just add a [DiceRoller](Assets/DiceRoller.cs) component to any object, and asign the relevant dice in the inspector.
+
+## Usage Example
+Notice that since all Roll functions are a sync (as explained [here](#returning-results)), in order to call them and wait for them properly, the calling function must be an async function as well.
+
+### Simple Usage
+```C#
+public Die die;
+public DiceRoller roller;
+public Vector3 torque;
+public Vector3 force;
+
+// Rolling a die directly
+private async void RollDieDirectly()
+{
+  int result = await die.Roll(torque, force);
+  // Use result
+}
+
+// Rolling a die using DiceRoller
+private async void RollDieUsingRoller()
+{
+  int result = await roller.RollOne();
+  // Use result
+}
+
+// Rolling multiple dice using DiceRoller
+private async void RollDice()
+{
+  int[] results = await roller.RollAll();
+  // Use results
+}
+```
+
+### Full Usage
+```C#
+public Die die;
+public DiceRoller roller;
+public Vector3 maxRollTorque;
+public Vector3 minRollForce;
+public Vector3 maxRollForce;
+
+// Roll a die with random torque and force, and print the result
+private async void RollRandomly()
+{
+    int result = await die.Roll(Random.insideUnitSphere * maxRollTorque, Random.Range(minRollForce, maxRollForce) * Vector3.up);
+    Debug.Log($"Die rolled {result}");
+}
+
+// Roll a specific die with a DiceRoller, and print the result
+private async void RollSecondDie()
+{
+    int result = await roller.RollOne(1);
+    Debug.Log(result);
+}
+
+// Roll dice and print the sum
+private async void RollForSum(Vector3[] torques, Vector3[] forces)
+{
+  int results = await roller.RollAll(torques, forces);
+  Debug.Log(results.Sum());
+}
+```
 
 ## API
 The code is pretty well documented and explained, but this is a quick overview of this project's functionality
@@ -184,11 +193,8 @@ The code is pretty well documented and explained, but this is a quick overview o
 * bool **IsRolling** - True if the die is rolling, False otherwise.
 
 #### Methods
-* void **Roll**(Vector3 torque, Vector3 force, System.Action\<int> callback = null)  
-  Rolls the die with a given torque and force, and calls the callback function with the result.
-  
-* void **Roll**(Vector3 torque, Vector3 force, ICollection<System.Action\<int>> callbacks)  
-  Rolls the die with a given torque and force, and calls the callback function with the result.
+* _async_ void **Roll**(Vector3 torque, Vector3 force)  
+  Roll the die with a given torque and force, and returns the result as an int.
 
 ### DiceRoller
 #### Properties
@@ -197,20 +203,14 @@ The code is pretty well documented and explained, but this is a quick overview o
 * bool **IsRolling** - True if any die is rolling, False otherwise (no die is rolling).
 
 #### Methods
-* void **RollOne**(ICollection<Action<int>> callbacks, int index = 0, Vector3? torque = null, Vector3? force = null)  
-  Rolls a single die and calls each of the callback functions in the collection with the result.
+* _async_ void **RollOne**(int index = 0, Vector3? torque = null, Vector3? force = null)  
+  Roll a single die and returns the result.
 
-* void **RollOne**(Action<int> callback = null, int index = 0, Vector3? torque = null, Vector3? force = null)  
-  Rolls a single die and calls the callback function with the result.
-
-* void **RollAll**(ICollection<Action<int[]>> callbacks, Vector3?[] torques = null, Vector3?[] forces = null)  
-  Rolls all dice and calls all callback functions with the results.
-
-* void **RollAll**(Action<int[]> callback = null, Vector3?[] torques = null, Vector3?[] forces = null)  
-  Rolls all dice and calls the callback function with the results.
-
+* _async_ void **RollAll**(Vector3?[] torques = null, Vector3?[] forces = null)  
+  Roll all dice and return the results as an array of ints.
+  
 * Die **GetDie**(int index = 0)  
-  Get the die at the specified index
+  Get the die at the specified index.
   
 * void **AddDie**(Die die)  
   Adds a die to the dice collection.
