@@ -2,6 +2,13 @@
 Welcome to the d6 Dice Unity Template repository! This project provides a basic Unity template for physical six-sided dice (d6).  
 You can use this template as a starting point to create your own dice-related games, simulations, or applications.
 
+## Table of Content
+* [Challanges](#challanges)
+* [Setup](#setup)
+* [Usage](#usage)
+* [API](#api)
+* [Acknowledgments](#acknowledgments)
+
 ## Challanges
 I set to make this little project since I came across some challanges of simulating a die:
 
