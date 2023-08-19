@@ -38,7 +38,7 @@ public class Tester : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.Return))
         {
-            TestAsyncDie();
+            //TestAsyncDie();
             TestAsyncRollOne();
         }
         if (Input.GetKeyDown(KeyCode.Keypad1))

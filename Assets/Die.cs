@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [System.Serializable]
@@ -9,10 +10,10 @@ public enum Side
 {
     [Description("Forward")] Forward,
     [Description("Up")] Up,
-    [Description("Left")] Left,
     [Description("Right")] Right,
+    [Description("Back")] Back,
     [Description("Down")] Down,
-    [Description("Back")] Back
+    [Description("Left")] Left
 }
 
 [System.Serializable]
@@ -84,7 +85,7 @@ public class Die : MonoBehaviour
             value = CalculateValue();
             return value;
         }
-        return -1;
+        return 0;
     }
 
 
@@ -99,7 +100,7 @@ public class Die : MonoBehaviour
             yield return new WaitForFixedUpdate();
             if (rb.IsSleeping())
             {
-                isRolling = false;
+                //isRolling = false;
                 value = CalculateValue();
                 foreach (System.Action<int> callback in callbacks ?? new List<System.Action<int>>())
                 {
@@ -146,30 +147,20 @@ public class Die : MonoBehaviour
     /// <returns> <see cref="int"/> The value of the die.</returns>
     private int CalculateValue()
     {
-        // Map world space vector to side on the die
-        Dictionary<Vector3, Side> sides = new()
-        {
-            { transform.forward, Side.Forward },
-            { transform.up, Side.Up },
-            { -transform.right, Side.Left },
-            { transform.right, Side.Right },
-            { -transform.up, Side.Down },
-            { -transform.forward, Side.Back }
-        };
-
-        // Find the side with the highest dot product with Vector3.up
-        int value = 0;
+        Vector3[] vectors = new Vector3[3] { transform.forward, transform.up, transform.right };
         float max = -1f;
-        foreach (var side in sides)
+        Side side = Side.Forward;
+
+        for (int i = 0; i < vectors.Length; i++)
         {
-            float dot = Vector3.Dot(side.Key, Vector3.up);
-            if (dot > max)
+            float dot = Vector3.Dot(vectors[i], Vector3.up);
+            if (Mathf.Abs(dot) >= max)
             {
-                max = dot;
-                value = values[side.Value];
+                max = Mathf.Abs(dot);
+                side = dot < 0 ? (Side)(i + 3) : (Side)i;
             }
         }
-        return value;
+        return values[side];
     }
 
     /// <summary>
