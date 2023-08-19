@@ -39,10 +39,9 @@ public class Die : MonoBehaviour
 
     // Members
     private TaskCompletionSource<bool> rollTask;
-    private Coroutine rollInstance;
     private Rigidbody rb;
 
-    private static readonly Dictionary<Side, Quaternion> sideToRotation = new() // Used to convert a side to a rotation
+    private static readonly Dictionary<Side, Quaternion> sideToRotation = new() 
     {
         { Side.Forward, Quaternion.LookRotation(Vector3.up, Vector3.forward) },
         { Side.Up, Quaternion.LookRotation(Vector3.forward, Vector3.up) },
@@ -50,11 +49,11 @@ public class Die : MonoBehaviour
         { Side.Right, Quaternion.LookRotation(Vector3.forward, Vector3.left) },
         { Side.Down, Quaternion.LookRotation(Vector3.forward, Vector3.down) },
         { Side.Back, Quaternion.LookRotation(Vector3.down, Vector3.forward) }
-    };
+    };  // Used to convert a side to a rotation
 
     // Properties
     public int Value { get => value; set => SetValue(value); }
-    public bool IsRolling => isRolling;
+    public bool IsRolling { get => isRolling; private set => isRolling = value; }
 
     private void Start()
     {
@@ -66,11 +65,17 @@ public class Die : MonoBehaviour
     {
         if (IsRolling && rb.IsSleeping())
         {
-            isRolling = false;
+            IsRolling = false;
             rollTask?.SetResult(true);
         }
     }
 
+    /// <summary>
+    /// Rolls the die and returns the result, using async function.
+    /// </summary>
+    /// <param name="torque"> Torque to be applied to the die. </param>
+    /// <param name="force"> Force to be applied to the die. </param>
+    /// <returns> <see cref="int"/> die value. </returns>
     public async Task<int> Roll(Vector3 torque, Vector3 force)
     {
         // Physically roll the die
@@ -80,65 +85,12 @@ public class Die : MonoBehaviour
         if (!IsRolling)
         {
             rollTask = new TaskCompletionSource<bool>();
-            isRolling = true;
+            IsRolling = true;
             await rollTask.Task;
             value = CalculateValue();
             return value;
         }
         return 0;
-    }
-
-
-    /// <summary>
-    /// Enumerator that awaits for the die to stop rolling, and handles the result.
-    /// </summary>
-    /// <param name="callbacks"> A collection of actions to be called with the result.</param>
-    private IEnumerator HandleRoll(ICollection<System.Action<int>> callbacks)
-    {
-        while (isRolling)
-        {
-            yield return new WaitForFixedUpdate();
-            if (rb.IsSleeping())
-            {
-                //isRolling = false;
-                value = CalculateValue();
-                foreach (System.Action<int> callback in callbacks ?? new List<System.Action<int>>())
-                {
-                    callback?.Invoke(value);
-                }
-            }
-        }
-        rollInstance = null;
-    }
-
-    /// <summary>
-    /// Rolls the die and calls the callback function with the result.
-    /// </summary>
-    /// <param name="callback">Action to be called when the die has stopped rolling.</param>
-    /// <param name="torque">Torque to be applied to the die.</param>
-    /// <param name="force">Force to be applied to the die.</param>
-    public void Roll(Vector3 torque, Vector3 force, System.Action<int> callback = null)
-    {
-        Roll(torque, force, callback == null ? null : new List<System.Action<int>>() { callback });
-    }
-
-    /// <summary>
-    /// Rolls the die and calls each of the callback functions with the result.
-    /// </summary>
-    /// <param name="torque"> Torque to be applied to the die. </param>
-    /// <param name="force"> Force to be applied to the die. </param>
-    /// <param name="callbacks"> A collection of actions to be called with the result. </param>
-    public void Roll(Vector3 torque, Vector3 force, ICollection<System.Action<int>> callbacks)
-    {
-        // Physically roll the die
-        rb.AddForce(force, ForceMode.Impulse);
-        rb.AddTorque(torque, ForceMode.Impulse);
-
-        if (rollInstance == null)
-        {
-            isRolling = true;
-            rollInstance = StartCoroutine(HandleRoll(callbacks));   // Start coroutine to handle the result
-        }
     }
 
     /// <summary>

@@ -28,6 +28,12 @@ public class DiceRoller : MonoBehaviour
         ReadValues();
     }
 
+    /// <summary>
+    /// Roll all dice.
+    /// </summary>
+    /// <param name="torques"> An array of torques to apply to each die (null for default). </param>
+    /// <param name="forces"> An array of forces to apply to each die (null for default). </param>
+    /// <returns> An array of ints representing each die's result. </returns>
     public async Task<int[]> RollAll(Vector3?[] torques = null, Vector3?[] forces = null)
     {
         Task[] tasks = new Task[dice.Count];
@@ -40,6 +46,13 @@ public class DiceRoller : MonoBehaviour
         return Values;
     }
 
+    /// <summary>
+    /// Roll one die.
+    /// </summary>
+    /// <param name="index"> Index of a die to roll (default is 0). </param>
+    /// <param name="torque"> A torque to apply to the die. </param>
+    /// <param name="force"> A force to apply to the die.</param>
+    /// <returns></returns>
     public async Task<int> RollOne(int index = 0, Vector3? torque = null, Vector3? force = null)
     {
         Die die = dice.Keys.ElementAt(index);
@@ -48,82 +61,6 @@ public class DiceRoller : MonoBehaviour
         int result = await die.Roll((Vector3)torque, (Vector3)force);
         dice[die] = result;
         return result;
-    }
-
-    /// <summary>
-    /// Rolls all dice and calls all callback functions with the results.
-    /// The results will be passed as an array of integers.
-    /// </summary>
-    /// <param name="callbacks"> A collection of actions to be called with the results. </param>
-    /// <param name="torques"> An array of torques to be applied to each die (null for random). </param> 
-    /// <param name="forces"> An array of forces to be applied to each die (null for random). </param> 
-    public void RollAll(ICollection<Action<int[]>> callbacks, Vector3?[] torques = null, Vector3?[] forces = null)
-    {
-        if (IsRolling)
-        {
-            Debug.LogError("Dice are already rolling");
-            return;
-        }
-
-        for (int i = 0; i < dice.Count; i++)
-        {
-            RollOne((Action<int>)null, i, torques?[i], forces?[i]);
-        }
-        StartCoroutine(HandleRoll(callbacks));
-    }
-
-    /// <summary>
-    /// Rolls all dice and calls the callback function with the results.
-    /// The results will be passed as an array of integers.
-    /// </summary>
-    /// <param name="callback"> An action to be called with the results. </param>
-    /// <param name="torques"> An array of torques to be applied to each die (null for random). </param> 
-    /// <param name="forces"> An array of forces to be applied to each die (null for random). </param> 
-    public void RollAll(Action<int[]> callback, Vector3?[] torques = null, Vector3?[] forces = null)
-    {
-        RollAll((List<Action<int[]>>)(callback == null ? new() : new() { callback }), torques, forces);
-    }
-
-    /// <summary>
-    /// Rolls a single die and calls each of the callback functions with the result.
-    /// </summary>
-    /// <param name="callbacks"> A collection of actions to be called with the result. </param>
-    /// <param name="index"> Index of the die to be rolled (0 by default) </param>
-    /// <param name="torque"> Torque to be applied to the die (null for random) </param>
-    /// <param name="force"> Force to be applied to the die (null for random) </param>
-    public void RollOne(ICollection<Action<int>> callbacks, int index = 0, Vector3? torque = null, Vector3? force = null)
-    {
-        if (index < 0 || index >= dice.Count)
-        {
-            Debug.LogError("Index out of range");
-            return;
-        }
-
-        Die die = GetDie(index);
-        if (!die.IsRolling)
-        {
-            callbacks = callbacks?.Count == 0 ? new List<Action<int>>() : callbacks;
-            callbacks?.Add((result) => dice[die] = result);
-            torque ??= Random.insideUnitSphere * maxRollTorque;
-            force ??= Random.Range(minRollForce, maxRollForce) * Vector3.up;
-            die.Roll((Vector3)torque, (Vector3)force, callbacks);
-        }
-        else
-        {
-            Debug.LogError("Die already rolling");
-        }
-    }
-
-    /// <summary>
-    /// Rolls a single die and calls the callback function with the result.
-    /// </summary>
-    /// <param name="callback"> An action to be called with the result. </param>
-    /// <param name="index"> Index of the die to be rolled (0 by default) </param>
-    /// <param name="torque"> Torque to be applied to the die (null for random) </param>
-    /// <param name="force"> Force to be applied to the die (null for random) </param>
-    public void RollOne(Action<int> callback, int index = 0, Vector3? torque = null, Vector3? force = null)
-    {
-        RollOne((List<Action<int>>)(callback == null ? new() : new() { callback }), index, torque, force);
     }
 
     /// <summary>
