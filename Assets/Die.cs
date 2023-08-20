@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
@@ -17,8 +16,7 @@ public enum Side
     [Description("Left")] Left
 }
 
-[System.Serializable]
-public class SideValueDictionary : SerializableDictionary<Side, int> { }
+[System.Serializable] public class SideValueDictionary : SerializableDictionary<Side, int> { }
 
 [RequireComponent(typeof(Rigidbody))]
 public class Die : MonoBehaviour

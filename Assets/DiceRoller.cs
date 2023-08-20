@@ -21,13 +21,8 @@ public class DiceRoller : MonoBehaviour
     [SerializeField][Range(0f, 100f)] private float minRollForce = 5f;
     [SerializeField][Range(0f, 100f)] private float maxRollForce = 10f;
 
-    private void Start()
-    {
-        foreach (Die die in dice.Keys)
-        {
-            die.OnValueChanged.AddListener(() => dice[die] = die.Value);
-        }
-    }
+    private void Start() => dice.Keys.ToList()
+        .ForEach(die => die.OnValueChanged.AddListener(() => dice[die] = die.Value));
 
     /// <summary>
     /// Roll all dice.
