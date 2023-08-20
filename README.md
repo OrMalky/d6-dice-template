@@ -172,7 +172,9 @@ public Vector3 maxRollForce;
 // Roll a die with random torque and force, and print the result
 private async void RollRandomly()
 {
-    int result = await die.Roll(Random.insideUnitSphere * maxRollTorque, Random.Range(minRollForce, maxRollForce) * Vector3.up);
+    Vector3 torque = Random.insideUnitSphere * maxRollTorque;
+    Vector3 force = Random.Range(minRollForce, maxRollForce) * Vector3.up
+    int result = await die.Roll(torque, force);
     Debug.Log($"Die rolled {result}");
 }
 
