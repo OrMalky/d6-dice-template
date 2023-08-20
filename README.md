@@ -200,9 +200,10 @@ The code is pretty well documented and explained, but this is a quick overview o
 #### Properties 
 * int **Value** - The value of the die. Setting this will rotate the die to the correct rotation.
 * bool **IsRolling** - True if the die is rolling, False otherwise.
+* UnityEvent **OnValueChanged** - An event triggered each time the die is done rolling.
 
 #### Methods
-* _async_ void **Roll**(Vector3 torque, Vector3 force)  
+* _async_ Task<int> **Roll**(Vector3 torque, Vector3 force)  
   Roll the die with a given torque and force, and returns the result as an int.
 
 ### DiceRoller
@@ -212,10 +213,10 @@ The code is pretty well documented and explained, but this is a quick overview o
 * bool **IsRolling** - True if any die is rolling, False otherwise (no die is rolling).
 
 #### Methods
-* _async_ void **RollOne**(int index = 0, Vector3? torque = null, Vector3? force = null)  
+* _async_ Task<int> **RollOne**(int index = 0, Vector3? torque = null, Vector3? force = null)  
   Roll a single die and returns the result.
 
-* _async_ void **RollAll**(Vector3?[] torques = null, Vector3?[] forces = null)  
+* _async_ Task<int[]> **RollAll**(Vector3?[] torques = null, Vector3?[] forces = null)  
   Roll all dice and return the results as an array of ints.
   
 * Die **GetDie**(int index = 0)  
