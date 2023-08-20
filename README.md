@@ -2,6 +2,13 @@
 Welcome to the d6 Dice Unity Template repository! This project provides a basic Unity template for physical six-sided dice (d6).  
 You can use this template as a starting point to create your own dice-related games, simulations, or applications.
 
+## Table of Content
+* [Challanges](#challanges)
+* [Setup](#setup)
+* [Usage](#usage)
+* [API](#api)
+* [Acknowledgments](#acknowledgments)
+
 ## Challanges
 I set to make this little project since I came across some challanges of simulating a die:
 
@@ -165,7 +172,9 @@ public Vector3 maxRollForce;
 // Roll a die with random torque and force, and print the result
 private async void RollRandomly()
 {
-    int result = await die.Roll(Random.insideUnitSphere * maxRollTorque, Random.Range(minRollForce, maxRollForce) * Vector3.up);
+    Vector3 torque = Random.insideUnitSphere * maxRollTorque;
+    Vector3 force = Random.Range(minRollForce, maxRollForce) * Vector3.up
+    int result = await die.Roll(torque, force);
     Debug.Log($"Die rolled {result}");
 }
 
