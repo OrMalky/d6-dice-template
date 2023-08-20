@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Events;
 
 [System.Serializable]
 public enum Side
@@ -24,7 +25,7 @@ public class Die : MonoBehaviour
 {
     [Header("State")]
     [CustomAttributes.ReadOnly][SerializeField] private int value;
-    [CustomAttributes.ReadOnly][SerializeField] private bool isRolling = false;
+    [CustomAttributes.ReadOnly][SerializeField] private bool isRolling;
 
     [SerializeField]
     private SideValueDictionary values = new() //Maps bwteen side and value. This can be static and readonly if all your dice have the same values.
@@ -54,11 +55,12 @@ public class Die : MonoBehaviour
     // Properties
     public int Value { get => value; set => SetValue(value); }
     public bool IsRolling { get => isRolling; private set => isRolling = value; }
+    public UnityEvent OnValueChanged { get; } = new();
 
-    private void Start()
+    private async void Start()
     {
         rb = GetComponent<Rigidbody>();
-        value = CalculateValue();
+        _ = await Roll(Vector3.zero, Vector3.zero);
     }
 
     private void FixedUpdate()
@@ -88,6 +90,7 @@ public class Die : MonoBehaviour
             IsRolling = true;
             await rollTask.Task;
             value = CalculateValue();
+            OnValueChanged?.Invoke();
             return value;
         }
         return 0;

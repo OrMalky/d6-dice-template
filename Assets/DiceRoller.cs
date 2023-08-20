@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -25,7 +23,10 @@ public class DiceRoller : MonoBehaviour
 
     private void Start()
     {
-        ReadValues();
+        foreach (Die die in dice.Keys)
+        {
+            die.OnValueChanged.AddListener(() => dice[die] = die.Value);
+        }
     }
 
     /// <summary>
@@ -59,7 +60,6 @@ public class DiceRoller : MonoBehaviour
         torque ??= Random.insideUnitSphere * maxRollTorque;
         force ??= Random.Range(minRollForce, maxRollForce) * Vector3.up;
         int result = await die.Roll((Vector3)torque, (Vector3)force);
-        dice[die] = result;
         return result;
     }
 
@@ -75,7 +75,6 @@ public class DiceRoller : MonoBehaviour
             Debug.LogError("Index out of range");
             return null;
         }
-
         return dice.Keys.ElementAt(index);
     }
 
@@ -135,22 +134,6 @@ public class DiceRoller : MonoBehaviour
     /// <param name="index"> The index of the die to remove. </param>
     public void RemoveDie(int index) => dice.Remove(GetDie(index));
 
-
-    /// <summary>
-    /// Calls for each of the callback functions when all dice have stopped rolling.
-    /// </summary>
-    /// <param name="callbacks"> A collection of callback functions. </param>
-    /// <returns></returns>
-    private IEnumerator HandleRoll(ICollection<Action<int[]>> callbacks)
-    {
-        while (IsRolling)
-        {
-            yield return new WaitForFixedUpdate();
-        }
-
-        callbacks?.ToList().ForEach(callback => callback?.Invoke(Values));
-    }
-
     /// Checks if any die is rolling.
     /// <returns><see cref="True"/> if any die is rolling, <see cref="False"/> otherwise</returns> 
     private bool CheckRolling()
@@ -163,18 +146,5 @@ public class DiceRoller : MonoBehaviour
             }
         }
         return false;
-    }
-
-    /// <summary>
-    /// Recreats the dice collection with the current dice values.
-    /// </summary>
-    private void ReadValues()
-    {
-        Dice newDice = new Dice();
-        foreach (Die die in dice.Keys)
-        {
-            newDice.Add(die, die.Value);
-        }
-        dice = newDice;
     }
 }
