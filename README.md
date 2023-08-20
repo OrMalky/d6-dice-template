@@ -200,6 +200,7 @@ The code is pretty well documented and explained, but this is a quick overview o
 #### Properties 
 * int **Value** - The value of the die. Setting this will rotate the die to the correct rotation.
 * bool **IsRolling** - True if the die is rolling, False otherwise.
+* UnityEvent **OnValueChanged** - An event triggered each time the die is done rolling.
 
 #### Methods
 * _async_ Task<int> **Roll**(Vector3 torque, Vector3 force)  
